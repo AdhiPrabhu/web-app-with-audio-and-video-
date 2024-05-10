@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Audio/Video Call</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="video-container">
+        <video id="local-video" autoplay muted></video>
+        <video id="remote-video" autoplay></video>
+    </div>
+    <div id="controls">
+        <button id="hang-up-btn">Hang Up</button>
+        <button id="toggle-audio-btn">Toggle Audio</button>
+        <button id="toggle-video-btn">Toggle Video</button>
+        <button id="toggle-speaker-btn">Toggle Speaker</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

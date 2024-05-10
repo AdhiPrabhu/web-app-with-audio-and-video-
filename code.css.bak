@@ -1,0 +1,17 @@
+#video-container {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+
+video {
+    width: 45%;
+}
+
+#controls {
+    text-align: center;
+}
+
+button {
+    margin: 5px;
+}

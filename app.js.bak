@@ -1,0 +1,131 @@
+const localVideo = document.getElementById('local-video');
+const remoteVideo = document.getElementById('remote-video');
+const hangUpBtn = document.getElementById('hang-up-btn');
+const toggleAudioBtn = document.getElementById('toggle-audio-btn');
+const toggleVideoBtn = document.getElementById('toggle-video-btn');
+const toggleSpeakerBtn = document.getElementById('toggle-speaker-btn');
+
+let localStream;
+let remoteStream;
+let isAudioMuted = false;
+let isVideoMuted = false;
+
+const socket = io(); // Connect to the signaling server
+
+// Function to start the call
+async function startCall() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        localStream = stream;
+        localVideo.srcObject = stream;
+
+        // Send offer to peer
+        const peerConnection = new RTCPeerConnection();
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        peerConnection.ontrack = event => {
+            remoteVideo.srcObject = event.streams[0];
+            remoteStream = event.streams[0];
+        };
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('offer', offer);
+    } catch (err) {
+        console.error('Error starting call:', err);
+    }
+}
+
+// Function to handle incoming offer from peer
+socket.on('offer', async offer => {
+    try {
+        const peerConnection = new RTCPeerConnection();
+        peerConnection.ontrack = event => {
+            remoteVideo.srcObject = event.streams[0];
+            remoteStream = event.streams[0];
+        };
+        await peerConnection.setRemoteDescription(offer);
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('answer', answer);
+    } catch (err) {
+        console.error('Error handling offer:', err);
+    }
+});
+
+// Function to handle incoming answer from peer
+socket.on('answer', async answer => {
+    try {
+        await peerConnection.setRemoteDescription(answer);
+    } catch (err) {
+        console.error('Error handling answer:', err);
+    }
+});
+
+// Function to hang up the call
+function hangUp() {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+    }
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+}
+
+// Function to toggle audio
+function toggleAudio() {
+    if (localStream) {
+        localStream.getAudioTracks().forEach(track => {
+            track.enabled = !track.enabled;
+            isAudioMuted = !track.enabled;
+
+            // Update button text to reflect audio state
+            toggleAudioBtn.textContent = isAudioMuted ? "Unmute Audio" : "Mute Audio";
+        });
+    }
+}
+
+// Function to toggle speaker
+async function toggleSpeaker() {
+    if ('sinkId' in HTMLMediaElement.prototype) {
+        try {
+            const audioOutputDevices = await navigator.mediaDevices.enumerateDevices()
+                .then(devices => devices.filter(device => device.kind === 'audiooutput'));
+
+            const speakerDevice = audioOutputDevices.find(device => device.kind === 'audiooutput');
+
+            if (localVideo.setSinkId) {
+                await localVideo.setSinkId(speakerDevice.deviceId);
+                console.log('Audio output set to speaker');
+
+                // Update button text to reflect speaker state
+                toggleSpeakerBtn.textContent = "Speaker On";
+            }
+        } catch (err) {
+            console.error('Error setting audio output:', err);
+        }
+    } else {
+        console.error('SinkId is not supported');
+    }
+}
+
+
+// Function to toggle video
+function toggleVideo() {
+    if (localStream) {
+        localStream.getVideoTracks().forEach(track => {
+            track.enabled = !track.enabled;
+            isVideoMuted = !track.enabled;
+        });
+    }
+}
+
+// Event listeners
+hangUpBtn.addEventListener('click', hangUp);
+toggleAudioBtn.addEventListener('click', toggleAudio);
+toggleSpeakerBtn.addEventListener('click', toggleSpeaker);
+toggleVideoBtn.addEventListener('click', toggleVideo);
+
+// Start the call when the page loads
+startCall();
